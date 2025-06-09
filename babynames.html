@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <title>Baby names - USA</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    html {
+      font-size: 16px;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #fafafa;
+    }
+    .main-title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.5rem;
+      margin-bottom: 0.2rem;
+      color: #333;
+      text-shadow: 1px 2px 8px #bbb, 0 1px 0 #fff;
+    }
+    #container, #below-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 1.2rem;
+      padding: 1rem 1rem 0rem 1rem;
+      max-width: 100vw;
+      max-height: 90vh;
+    }
+    #below-container {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+    }
+    #below-row {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        gap: 1.2rem;
+    }
+
+    :root {
+        --viz-height: 14rem;
+    }
+    #map-container, #piechart-container, svg.map, #piechart{
+        height: var(--viz-height);
+        max-height: var(--viz-height);
+    }
+    #map-container, #piechart-container{
+        flex: 1 1 20rem;
+        max-width: 50%;
+        box-sizing: border-box;
+    }
+    #map-container {
+        flex: 0 0 auto;
+        background: white;
+        position: relative;
+        display: flex;
+        align-items: center;    
+        justify-content: center;
+    }
+    #map-picked-label {
+        position: absolute;
+        top: 0.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #333;
+        background: rgba(255,255,255,0.85);
+        padding: 0.2rem 1rem;
+        border-radius: 8px;
+        pointer-events: none;
+        z-index: 2;
+        min-width: 0;
+        text-align: center;
+        white-space: nowrap;
+    }
+    svg.map {
+      width: 100%;
+      height: 100%;
+      display: block;
+      max-width: 30rem;
+      max-height: 100%;
+      border: 1px solid #ccc;
+      background: white;
+    }
+    #tooltip {
+      position: absolute;
+      background: white;
+      border: 1px solid black;
+      padding: 0.5rem 1rem;
+      pointer-events: none;
+      font-size: 1rem;
+      z-index: 10;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
+    svg.map path {
+      stroke: white;
+      stroke-width: 0.08rem;
+      transition: fill 0.2s;
+    }
+    svg.map path:hover {
+      opacity: 0.8;
+      cursor: pointer;
+      stroke: black;
+    }
+
+    #slider-container {
+        flex: auto;    
+        margin-top: 0rem;
+        padding: 0 1.8rem 1rem 1.8rem;
+    }
+
+    .slider-svg {
+      width: 100%;
+      height: 70px;
+      display: block;
+    }
+
+    .ticks {
+      font: 10px sans-serif;
+    }
+
+    .track,
+    .track-inset,
+    .track-overlay {
+      stroke-linecap: round;
+    }
+
+    .track {
+      stroke: #000;
+      stroke-opacity: 0.3;
+      stroke-width: 10px;
+    }
+
+    .track-inset {
+      stroke: #ddd;
+      stroke-width: 8px;
+    }
+
+    .track-overlay {
+      pointer-events: stroke;
+      stroke-width: 50px;
+      stroke: transparent;
+      cursor: crosshair;
+    }
+
+    .handle {
+      fill: #fff;
+      stroke: #000;
+      stroke-opacity: 0.5;
+      stroke-width: 1.25px;
+    }
+
+    .year-label {
+      font: 14px sans-serif;
+      text-anchor: middle;
+    }
+
+
+    /* ppie charttt */
+    #piechart-container {
+        flex: 1 1 20rem;
+        width: calc(var(--viz-height) * 1.1);
+        height: var(--viz-height);
+        max-width: 25vw;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #ccc;
+        position: relative;
+        margin: 0;
+        padding: 0.5rem 0 0 0;
+    }
+    #piechart-title {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 0.2rem;
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #333;
+    }
+    #piechart {
+        width: 90%;
+        height: auto;
+        max-height: 90%;
+        display: block;
+    }
+    #pie-total-text {
+        width: 100%;
+        text-align: center;
+        margin-top: 0.5rem;
+        position: static;
+    }
+
+    .slice-male {
+        fill: #4a90e2;
+        transition: fill 0.2s;
+        stroke: white;
+        cursor: pointer;
+    }
+    .slice-male:hover {
+        fill: #357abd;
+    }
+    .slice-female {
+        fill: #8d44add6;
+        transition: fill 0.2s;
+        stroke: white;
+        cursor: pointer;
+    }
+    .slice-female:hover {
+        fill: #71378ad6;
+    }
+    .chart-title, #barchart-container .chart-title {
+        font-size: 18px;
+        font-weight: bold;
+        fill: #333;
+        text-anchor: middle;
+    }
+    .total-text {
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+        margin-top: 20px;
+    }
+    .percentage-label {
+        fill: white;
+        font-size: 14px;
+        font-weight: bold;
+        text-anchor: middle;
+        dominant-baseline: middle;
+    }
+
+    /* bidirectional barchart */
+    #barchart-container {
+        box-sizing: border-box;
+        flex: 1 1 4rem;
+        background: white;
+        border: 1px solid #ccc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        height: var(--viz-height);
+        max-height: var(--viz-height);
+        margin: 0;
+        padding: 0.5rem 0 0 0;
+    }
+    #barchart {
+        height: 100%;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    #barchart-tooltip {
+        position: absolute;
+        background: white;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 14px;
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        display: none;
+        z-index: 1000;
+    }
+
+    .bar-male {
+      fill: #4a90e2;
+      transition: fill 0.2s;
+    }
+    
+    .bar-male:hover {
+      fill: rgba(53, 121, 189, 0.683);
+      cursor: pointer;
+    }
+    
+    .bar-female {
+      fill: #8d44add6;
+      transition: fill 0.2s;
+    }
+    
+    .bar-female:hover {
+      fill: #8d44ad8d;
+      cursor: pointer;
+    }
+
+    .center-line {
+      stroke: #333;
+      stroke-width: 2;
+    }
+
+    .name-label {
+      font-size: 32px;
+      font-weight: bold;
+      fill: white;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+    
+    .count-label {
+      font-size: 24px;
+      fill: #666;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+    
+    .gender-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+      fill: #666;
+    }
+
+    /* searchbar search bar */
+    #searchbar-container {
+        flex: 1 1 0;
+        max-width: 25rem;
+        min-width: 16rem;
+        margin: 0 1rem 0 0;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+    #name-search {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        outline: none;
+    }
+    #search-suggestions {
+        position: absolute;
+        top: 4.5rem;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-top: none;
+        z-index: 100;
+        max-height: 180px;
+        overflow-y: auto;
+        border-radius: 0 0 4px 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: none;
+    }
+    .suggestion-item {
+        padding: 0.6rem 1rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    .suggestion-item:hover {
+        background: #f0f0f0;
+    }
+
+    /* neutralna imenaaa */
+    #neutral-names-label {
+        margin-top: 0.8rem;
+        margin-bottom: 0.8rem;
+        font-weight: bold;
+        font-size: 0.8rem;
+        color: #444;
+    }
+
+    #neutral-names-picker {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 0.5rem;
+        padding-bottom: 0.2rem;
+        scrollbar-width: thin;
+        scrollbar-color: #afafaf #cbcbcb;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .neutral-name-item {
+        flex: 0 0 auto;
+        background: #f8f8f8;
+        border: 1px solid #bbb;
+        border-radius: 18px;
+        padding: 0.6rem 0.6rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+        margin-bottom: 0.4rem;
+        transition: background 0.15s, border 0.15s;
+        user-select: none;
+    }
+    .neutral-name-item:hover {
+        background: #e0e0e0;
+        border-color: #888;
+    }
+
+
+    /* linechart  */
+    #linechart-container {
+        flex: 3 1 0;
+        background: #fff;
+        border: 1px solid #ccc;
+        min-width: 0;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+    #linechart {
+        width: 100%;
+        height: 11rem;
+        display: block;
+    }
+    #linechart-tooltip {
+        display: none;
+        position: absolute;
+        background: #fff;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        z-index: 1000;
+        pointer-events: none;
+        color: #333;
+    }
+
+    #linechart-legend {
+        position: absolute;
+        top: 1rem;
+        left: 3.5rem;
+        background: rgba(255,255,255,0.7);
+        border-radius: 6px;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.2rem;
+        pointer-events: none;
+    }
+    #linechart-legend .legend-x {
+        pointer-events: auto;
+    }
+
+    @media (max-width: 900px) {
+      #container {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0.5rem;
+        gap: 1rem;
+      }
+      #map-container, #pie {
+        max-width: 100%;
+        width: 100%;
+        align-self: flex-start;
+      }
+      #info {
+        padding: 1rem;
+        max-width: none;
+      }
+
+      @media (max-width: 600px) {
+        #map-container {
+          width: min(95vw, 16rem);
+          height: min(35vh, 13.5rem);
+        }
+        html {
+          font-size: 14px;
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+    <div id="tooltip"></div>
+
+    <h1 class="main-title">
+        Visualization of names of newborns in USA through time
+    </h1>
+
+    <div id="container">
+        <div id="map-container">
+            <div id="map-picked-label"></div>
+            <svg class="map" viewBox="0 0 900 600" preserveAspectRatio="xMinYMin meet"></svg>
+        </div>
+        <div id="piechart-container">
+            <div id="piechart-title" class="chart-title"></div>
+            <svg id="piechart" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet"></svg>
+            <div id="pie-total-text" class="total-text"></div>
+            <div id="pie-no-data" style="display:none; color:#b00; font-weight: bold; text-align: center; position:absolute">
+                Sorry, we have no data for this year and state.
+            </div>
+        </div>
+        <div id="barchart-container">
+            <div class="chart-title" id="barchart-title"></div>
+            <svg id="barchart" viewBox="0 0 1200 600" preserveAspectRatio="xMinYMin meet"></svg>
+            <div id="barchart-no-data" style="display:none; color:#b00; font-weight: bold; text-align: center; position: absolute;">
+                Sorry, we have no data for this year and state.
+            </div>
+        </div>
+    </div>
+
+    <div id="below-container">
+        <div id="below-row">
+            <div id="linechart-container">
+                <svg id="linechart"></svg>
+                <div id="linechart-legend"></div>
+                <div id="linechart-tooltip"></div>
+            </div>
+            <div id="searchbar-container">
+                <div id="picked-name-info" style="margin: 0.5rem 0; font-size: 1rem; color: #222222; ">
+                    Pick a name:
+                </div>
+                <input type="text" id="name-search" placeholder="Search for a name..." autocomplete="off"/>
+                <div id="search-suggestions"></div>
+                <div id="neutral-names-label">
+                    Neutral names:
+                    <label style="margin-left:1rem;">
+                        <input type="radio" name="neutral-gender" value="F" checked> Girls
+                    </label>
+                    <label style="margin-left:0.5rem;">
+                        <input type="radio" name="neutral-gender" value="M"> Boys
+                    </label>
+                </div>
+                <div id="neutral-names-picker"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="slider-container">
+        <svg class="slider-svg"></svg>
+    </div>
+
+    <script>
+        let pieCountsData = [];
+        let selectedBarName = null;
+        let selectedBarGender = null;
+        let pieCurrentYear = 1900;
+        let pieCurrentState = 'National';
+        let nationalData = [];
+        let stateData = [];
+        let geojsonData = null; // storing geojson data globally
+        let stateNameYearGenderCount = {}; // to store counts by state
+
+        let allNames = []; // to store all names for search suggestions
+        let nameGenderMap = {}; // to map names by gender
+        let selectedLineNames = []; // to store selected names for line chart
+
+        // loading csv and json data
+        Promise.all([
+            d3.csv("national_names.csv"),
+            d3.csv("state_names_full.csv"),
+            d3.json("us-states.json"), //load only once
+            d3.csv("counts.csv", d3.autoType) // counts data - for quicker access to count of children
+        ]).then(function([national, state, geoJson, counts]) {
+            nationalData = national.map(d => ({
+                name: d.Name,
+                gender: d.Gender,
+                count: +d.Count,
+                year: +d.Year
+            }));
+
+            stateData = state.map(d => ({
+                state: d.State,
+                gender: d.Gender,
+                name: d.Name,
+                year: +d.Year,
+                count: +d.Count
+            }));
+
+            // for each state, year and name+gender - count
+            stateData.forEach(d => {
+                if (!stateNameYearGenderCount[d.state]) stateNameYearGenderCount[d.state] = {};
+                if (!stateNameYearGenderCount[d.state][d.year]) stateNameYearGenderCount[d.state][d.year] = {};
+                if (!stateNameYearGenderCount[d.state][d.year][d.gender]) stateNameYearGenderCount[d.state][d.year][d.gender] = {};
+                stateNameYearGenderCount[d.state][d.year][d.gender][d.name] = d.count;
+            });
+
+            geojsonData = geoJson; // store geojson data globally
+            pieCountsData = counts;
+
+            const stateCounts = geojsonData.features.map(d => {
+                const stateName = d.properties.NAME;
+                const row = pieCountsData.find(r => r.Place === stateName && +r.Year === +pieCurrentYear);
+                return row ? +row.Count : 0;
+            });
+            colorScale.domain(d3.extent(stateCounts));
+
+            // setting up the map 
+            g.selectAll("path")
+                .data(geojsonData.features, d => d.properties.NAME)
+                .enter()
+                .append("path")
+                .attr("d", path)
+                .attr("fill", d => {
+                        const stateName = d.properties.NAME;
+                        const row = pieCountsData.find(r => r.Place === stateName && +r.Year === +pieCurrentYear);
+                        const count = row ? +row.Count : 0;
+                        return count > 0 ? colorScale(count) : "#eee";
+                    })
+                .on("mouseover", function(event, d) {
+                    let tooltipHtml = `<strong>${d.properties.NAME}</strong><br>`;
+                    if (selectedBarName && selectedBarGender) {
+                        const count =
+                            stateNameYearGenderCount[d.properties.NAME] &&
+                            stateNameYearGenderCount[d.properties.NAME][pieCurrentYear] &&
+                            stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender] &&
+                            stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender][selectedBarName]
+                                ? stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender][selectedBarName]
+                                : 0;
+                        tooltipHtml += `${selectedBarName} (${selectedBarGender}): ${count}`;
+                    } else {
+                        const row = pieCountsData.find(r => r.Place === d.properties.NAME && +r.Year === +pieCurrentYear);
+                        const count = row ? +row.Count : 0;
+                        tooltipHtml += `Total Children: ${count.toLocaleString()}`;
+                    }
+                    tooltip
+                        .style("display", "block")
+                        .html(tooltipHtml);
+                })
+                .on("mousemove", function(event) {
+                    tooltip
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 20) + "px");
+                    d3.select(this).raise()
+                        .attr("stroke", "black")
+                        .attr("stroke-width", 3); 
+                })
+                .on("mouseout", function() {
+                    tooltip.style("display", "none");
+                    d3.select(this).attr("stroke-width", 1);
+                })
+                .on("click", function(event, d) {
+                    pieCurrentState = d.properties.NAME;
+                    // updating other charts based on selected state
+                    updatePieChart();
+                    updateBarchart();
+                    updateLineChart();
+                });
+
+            updatePieChart();
+            updateBarchart();
+            updateMapColors();
+            updateLineChart();
+            fillNameList();
+            renderNeutralNamesPicker();
+
+            // radio buttons for neutral names
+            document.querySelectorAll('input[name="neutral-gender"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if(selectedBarName && getNeutralNames().includes(selectedBarName)) {
+                        selectName(selectedBarName, this.value);
+                    }
+                });
+            });
+        });
+
+        // name list
+        function fillNameList() {
+            const nameSet = new Set();
+            nameGenderMap = {};
+            stateData.forEach(d => {
+                const key = d.name + "|" + d.gender;
+                if (!nameSet.has(key)) {
+                    nameSet.add(key);
+                    allNames.push({ name: d.name, gender: d.gender });
+                    nameGenderMap[d.name.toLowerCase() + "|" + d.gender] = d.gender;
+                }
+            });
+        }
+        // finding all neutral names
+        function getNeutralNames() {
+            // names that exist for both M and F
+            const nameGenderSet = {};
+            stateData.forEach(d => {
+                const lname = d.name.toLowerCase();
+                if (!nameGenderSet[lname]) nameGenderSet[lname] = new Set();
+                nameGenderSet[lname].add(d.gender);
+            });
+            const neutralNames = Object.keys(nameGenderSet)
+            .filter(name => nameGenderSet[name].has('M') && nameGenderSet[name].has('F'));
+            return neutralNames.map(name => ({
+                name: name.charAt(0).toUpperCase() + name.slice(1),
+                genders: Array.from(nameGenderSet[name])
+            }));
+        }
+
+        // making a button for each neutral name
+        function renderNeutralNamesPicker() {
+            const picker = document.getElementById('neutral-names-picker');
+            picker.innerHTML = '';
+            const neutralNames = getNeutralNames();
+            neutralNames.forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'neutral-name-item';
+                div.textContent = name.name;
+                div.addEventListener('click', () => {
+                    const gender = document.querySelector('input[name="neutral-gender"]:checked').value;
+                    selectName(name.name, gender);
+                    document.getElementById('name-search').value = name.name;
+                });
+                picker.appendChild(div);
+            });
+        }
+
+        // map setup
+        const svg = d3.select("svg.map");
+        const tooltip = d3.select("#tooltip");
+        const width = 900;
+        const height = 600;
+        const g = svg.append("g");
+
+        const projection = d3.geoAlbersUsa()
+            .scale(950)
+            .translate([width / 2, height / 2 ]);
+
+        const path = d3.geoPath().projection(projection);
+
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8])
+            .on("zoom", (event) => {
+            g.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+
+        const colorScale = d3.scaleSequential()
+                .interpolator(d3.interpolateRgb("#eeeeee", "#5D2E0F"));
+            
+        // clicking outside of the states resets other chart (and the map) to national
+        svg.on("click", function(event) {
+            if (event.target.tagName !== "path") {
+                pieCurrentState = "National";
+                updatePieChart();
+                updateBarchart();
+                updateMapColors();
+                updateLineChart();
+            }
+        });
+            
+        // updating map coloring based on state/national and year and if name is selected
+        function updateMapColors() {
+            if(!geojsonData) return; // ensure geojson data is loaded
+
+            // update color scale domain based on current data
+            let counts;
+            if (selectedBarName && selectedBarGender) {
+                counts = geojsonData.features.map(d => {
+                    const count =
+                        stateNameYearGenderCount[d.properties.NAME] &&
+                        stateNameYearGenderCount[d.properties.NAME][pieCurrentYear] &&
+                        stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender] &&
+                        stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender][selectedBarName]
+                            ? stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender][selectedBarName]
+                            : 0;
+                    return count;
+                });
+                const maxCount = Math.max(...counts);
+                colorScale.domain([0, maxCount > 0 ? maxCount: 1]);
+            } else {
+                // Use total children counts
+                counts = geojsonData.features.map(d => {
+                    const row = pieCountsData.find(r => r.Place === d.properties.NAME && +r.Year === +pieCurrentYear);
+                    return row ? +row.Count : 0;
+                });
+                //colorScale.domain(d3.extent(counts));
+                const extent = d3.extent(counts);
+                colorScale.domain(extent[0] === extent[1] ? [0, extent[1] || 1] : extent);
+            }
+
+            g.selectAll("path")
+                .attr("fill", d => {
+                    if (selectedBarName && selectedBarGender) {
+                        const count =
+                            stateNameYearGenderCount[d.properties.NAME] &&
+                            stateNameYearGenderCount[d.properties.NAME][pieCurrentYear] &&
+                            stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender] &&
+                            stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender][selectedBarName]
+                                ? stateNameYearGenderCount[d.properties.NAME][pieCurrentYear][selectedBarGender][selectedBarName]
+                                : 0;
+                        // Use a color scale for the count (adjust as needed)
+                        return count > 0 ? colorScale(count) : "#eee";
+                    } else {
+                        const row = pieCountsData.find(r => r.Place === d.properties.NAME && +r.Year === +pieCurrentYear);
+                        const count = row ? +row.Count : 0;
+                        return count > 0 ? colorScale(count) : "#eee";
+                    }
+                });
+        }
+
+        // pie chart
+        const pieSvg = d3.select("#piechart");
+        const pieWidth = 200;
+        const pieHeight = 200;
+        const pieRadius = Math.min(pieWidth, pieHeight) / 2 - 10;
+
+        pieSvg.selectAll("g").remove(); // clear previous content for hot reaload
+
+        const pieGroup = pieSvg
+            .append("g")
+            .attr("transform", `translate(${pieWidth / 2}, ${pieHeight / 2})`);
+
+        const pie = d3.pie()
+            .value(d => d.count)
+            .sort(null);
+
+        const arc = d3.arc()
+            .innerRadius(0)
+            .outerRadius(pieRadius);
+
+        const pieTooltip = d3.select("#tooltip");
+        const pieTotalText = d3.select("#pie-total-text");
+
+        // slider   
+        const sliderSvg = d3.select(".slider-svg");
+        const sliderMargin = {left: 15, right: 10};
+        const sliderWidth = +sliderSvg.node().clientWidth - sliderMargin.left - sliderMargin.right - 20;
+        const sliderHeight = 120;
+
+        const x = d3.scaleLinear()
+            .domain([1900, 2024])
+            .range([0, sliderWidth])
+            .clamp(true);
+
+        const slider = sliderSvg.append("g")
+            .attr("transform", `translate(${sliderMargin.left+10},${sliderHeight / 2 -20})`);
+
+        slider.append("line")
+            .attr("class", "track")
+            .attr("x1", x.range()[0])
+            .attr("x2", x.range()[1])
+            .clone(true).attr("class", "track-inset")
+            .clone(true).attr("class", "track-overlay")
+            .call(d3.drag()
+                .on("start drag", (event) => {
+                const year = Math.round(x.invert(event.x));
+                updateYear(year);
+                }));
+
+        slider.insert("g", ".track-overlay")
+            .attr("class", "ticks")
+            .attr("transform", "translate(0, 18)")
+            .selectAll("text")
+            .data(x.ticks((2024 - 1900) / 10))
+            .join("text")
+            .attr("x", d => x(d))
+            .attr("text-anchor", "middle")
+            .text(d => d);
+
+        const handle = slider.insert("circle", ".track-overlay")
+            .attr("class", "handle")
+            .attr("r", 9)
+            .attr("cx", x(1900));
+
+            const handleLabel = slider.append("text")
+            .attr("class", "year-label")
+            .attr("text-anchor", "middle")
+            .attr("x", x(1900))
+            .attr("y", -18)
+            .text(1900);
+
+        // on year change, updating other charts
+        function updateYear(year) {
+            handle.attr("cx", x(year));
+            handleLabel.text(year).attr("x", x(year));
+            pieCurrentYear = year;
+            updatePieChart();
+            updateBarchart();
+            updateMapColors();
+        }
+
+        // animate slider on load
+        slider.transition()
+            .duration(750)
+            .tween("year", () => {
+            const i = d3.interpolate(1900, 2020);
+            return t => updateYear(Math.round(i(t)));
+            });
+
+        function updatePieChart() {
+            document.getElementById("piechart-title").textContent =  `${pieCurrentState} — ${pieCurrentYear}.`;
+            document.getElementById("pie-no-data").style.display = "none";
+            document.getElementById("pie-total-text").style.display = "block";
+
+            pieGroup.selectAll(".pie-slice").remove();
+            pieGroup.selectAll(".percentage-label").remove();
+
+            const row = pieCountsData.find(d => 
+                d.Place === pieCurrentState && d.Year === pieCurrentYear
+            ) || pieCountsData.find(d => 
+                d.Place === pieCurrentState && +d.Year === +pieCurrentYear
+            ); // fallback for type mismatch
+
+            let maleTotal = 0, femaleTotal = 0, grandTotal = 0;
+            if (row) {
+                maleTotal = +row.Boys;
+                femaleTotal = +row.Girls;
+                grandTotal = +row.Count;
+            }
+
+            // update total no of children text
+            pieTotalText.text(`Total number of children: ${grandTotal.toLocaleString()}`);
+
+            // prepare data for pie chart
+            const pieData = [
+                { gender: 'M', label: 'Boys', count: maleTotal, color: '#4a90e2' },
+                { gender: 'F', label: 'Girls', count: femaleTotal, color: '#8d44add6' }
+            ].filter(d => d.count > 0);
+
+            // if no data - text for no data
+            if (pieData.length === 0 || grandTotal === 0) {
+                document.getElementById("pie-no-data").style.display = "block";
+                document.getElementById("pie-total-text").style.display = "none";
+                pieSvg.style("opacity", 0.2);
+                return;
+            } else {
+                document.getElementById("pie-no-data").style.display = "none";
+                document.getElementById("pie-total-text").style.display = "block";
+                pieSvg.style("opacity", 1);
+            }
+
+            // create pie slices
+            const slices = pieGroup.selectAll(".pie-slice")
+            .data(pie(pieData))
+            .enter()
+            .append("g")
+            .attr("class", "pie-slice");
+
+            // add path elements
+            slices.append("path")
+                .attr("d", arc)
+                .attr("class", d => d.data.gender === 'M' ? 'slice-male' : 'slice-female')
+                .on("mouseover", function(event, d) {
+                    pieTooltip
+                        .style("display", "block")
+                        .html(`<strong>${d.data.label}:</strong> ${d.data.count.toLocaleString()}`);
+                    d3.select(this.parentNode)
+                        .raise();
+                    d3.select(this)
+                        .attr("stroke", "black")
+                        .attr("stroke-width", 3);
+                })
+                .on("mousemove", function(event) {
+                    pieTooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+                })
+                .on("mouseout", function() {
+                    pieTooltip.style("display", "none");
+                    d3.select(this)
+                        .attr("stroke", null)
+                        .attr("stroke-width", null);
+                });
+
+            // add percentage labels
+            slices.append("text")
+            .attr("class", "percentage-label")
+            .attr("transform", d => `translate(${arc.centroid(d)})`)
+            .text(d => {
+                const percentage = ((d.data.count / grandTotal) * 100).toFixed(1);
+                return `${percentage}%`;
+            })
+            .style("display", d => {
+                const percentage = (d.data.count / grandTotal) * 100;
+                return percentage > 5 ? "block" : "none";
+            });
+        }   
+
+        function updateBarchart() {
+        document.getElementById("barchart-title").textContent = `Top 5 — ${pieCurrentState} — ${pieCurrentYear}.`;
+
+        const svg = d3.select("#barchart");
+        const margin = {top: 40, right: 50, bottom: 30, left: 50};
+        const width = 1200 - margin.left - margin.right;
+        const height = 600 - margin.top - margin.bottom;
+        const centerX = width / 2;
+
+        let chartGroup = svg.select("g.barchart-group");
+        if (chartGroup.empty()) {
+            chartGroup = svg.append("g")
+                .attr("class", "barchart-group")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+        }
+
+        // get data for current year and state/national
+        let currentData;
+        if (pieCurrentState === 'National') {
+            currentData = nationalData.filter(d => d.year === pieCurrentYear);
+        } else {
+            currentData = stateData.filter(d => d.year === pieCurrentYear && d.state === pieCurrentState);
+        }
+
+        // no data text
+        if (!currentData || currentData.length === 0) {
+            d3.select("#barchart-no-data").style("display", "block");
+            chartGroup.selectAll("*").remove();
+            return;
+        } else {
+            d3.select("#barchart-no-data").style("display", "none");
+        }
+
+        // top 5 names for each gender
+        const maleNames = currentData.filter(d => d.gender === 'M').sort((a, b) => b.count - a.count).slice(0, 5);
+        const femaleNames = currentData.filter(d => d.gender === 'F').sort((a, b) => b.count - a.count).slice(0, 5);
+
+        // scales
+        const maxCount = Math.max(
+            d3.max(maleNames, d => d.count) || 0,
+            d3.max(femaleNames, d => d.count) || 0
+        );
+        const xScale = d3.scaleLinear()
+            .domain([0, maxCount])
+            .range([0, centerX - 10]);
+        const yScale = d3.scaleBand()
+            .domain([0, 1, 2, 3, 4])
+            .range([0, height])
+            .padding(0.1);
+
+        // center line 
+        let centerLine = chartGroup.selectAll(".center-line").data([null]);
+        centerLine = centerLine.join(
+            enter => enter.append("line")
+                .attr("class", "center-line")
+                .attr("x1", centerX).attr("y1", 0)
+                .attr("x2", centerX).attr("y2", height)
+                .attr("stroke", "#333")
+                .attr("stroke-width", 2)
+        );
+
+        // --- MALE BARS ---
+        const maleGroups = chartGroup.selectAll("g.male-bar-group")
+            .data(maleNames, d => d.name);
+
+        // ENTER
+        const maleGroupsEnter = maleGroups.enter()
+            .append("g")
+            .attr("class", "bar-group male-bar-group");
+
+        // rects
+        maleGroupsEnter.append("rect")
+            .attr("class", "bar-male")
+            .attr("x", centerX - 10)
+            .attr("y", (d, i) => yScale(i))
+            .attr("width", 0)
+            .attr("height", yScale.bandwidth())
+            .on("mouseover", function(event, d) {
+                tooltip
+                    .style("display", "block")
+                    .html(`<strong>${d.name}</strong><br>${d.count.toLocaleString()}`);
+            })
+            .on("mousemove", function(event) {
+                tooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            })
+            .on("mouseout", function() {
+                tooltip.style("display", "none");
+            })
+            .on("click", function(event, d) {
+                selectedBarName = d.name;
+                selectedBarGender = d.gender;
+                selectName(d.name, d.gender);
+            })
+            .transition()
+            .duration(700)
+            .attr("x", d => centerX - 10 - xScale(d.count))
+            .attr("width", d => xScale(d.count));
+
+        // name labels
+        maleGroupsEnter.append("text")
+            .attr("class", "name-label")
+            .attr("x", centerX - 10)
+            .attr("y", (d, i) => yScale(i) + yScale.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .text(d => d.name)
+            .transition()
+            .duration(700)
+            .attr("x", d => centerX - 10 - xScale(d.count) / 2);
+
+        // UPDATE
+        maleGroups.select("rect")
+            .transition()
+            .duration(700)
+            .attr("x", (d, i) => centerX - 10 - xScale(d.count))
+            .attr("y", (d, i) => yScale(i))
+            .attr("width", d => xScale(d.count))
+            .attr("height", yScale.bandwidth());
+
+        maleGroups.select("text")
+            .transition()
+            .duration(700)
+            .attr("x", d => centerX - 10 - xScale(d.count) / 2)
+            .attr("y", (d, i) => yScale(i) + yScale.bandwidth() / 2)
+            .text(d => d.name);
+
+        // EXIT
+        maleGroups.exit().remove();
+
+        // --- FEMALE BARS ---
+        const femaleGroups = chartGroup.selectAll("g.female-bar-group")
+            .data(femaleNames, d => d.name);
+
+        // ENTER
+        const femaleGroupsEnter = femaleGroups.enter()
+            .append("g")
+            .attr("class", "bar-group female-bar-group");
+
+        femaleGroupsEnter.append("rect")
+            .attr("class", "bar-female")
+            .attr("x", centerX + 10)
+            .attr("y", (d, i) => yScale(i))
+            .attr("width", 0)
+            .attr("height", yScale.bandwidth())
+            .on("mouseover", function(event, d) {
+                tooltip
+                    .style("display", "block")
+                    .html(`<strong>${d.name}</strong><br>${d.count.toLocaleString()}`);
+            })
+            .on("mousemove", function(event) {
+                tooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            })
+            .on("mouseout", function() {
+                tooltip.style("display", "none");
+            })
+            .on("click", function(event, d) {
+                selectedBarName = d.name;
+                selectedBarGender = d.gender;
+                selectName(d.name, d.gender);
+            })
+            .transition()
+            .duration(700)
+            .attr("width", d => xScale(d.count));
+
+        femaleGroupsEnter.append("text")
+            .attr("class", "name-label")
+            .attr("x", centerX + 10)
+            .attr("y", (d, i) => yScale(i) + yScale.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .text(d => d.name)
+            .transition()
+            .duration(700)
+            .attr("x", d => centerX + 10 + xScale(d.count) / 2);
+
+        // UPDATE
+        femaleGroups.select("rect")
+            .transition()
+            .duration(700)
+            .attr("x", centerX + 10)
+            .attr("y", (d, i) => yScale(i))
+            .attr("width", d => xScale(d.count))
+            .attr("height", yScale.bandwidth());
+
+        femaleGroups.select("text")
+            .transition()
+            .duration(700)
+            .attr("x", d => centerX + 10 + xScale(d.count) / 2)
+            .attr("y", (d, i) => yScale(i) + yScale.bandwidth() / 2)
+            .text(d => d.name);
+
+        // EXIT
+        femaleGroups.exit().remove();
+
+        // --- COUNT LABELS ---
+        // remove and redraw count labels 
+        chartGroup.selectAll(".male-count").remove();
+        chartGroup.selectAll(".female-count").remove();
+
+        chartGroup.selectAll(".male-count")
+            .data(maleNames)
+            .enter()
+            .append("text")
+            .attr("class", "count-label male-count")
+            .attr("x", d => centerX - 20 - xScale(d.count))
+            .attr("y", (d, i) => yScale(i) + yScale.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .text(d => d.count.toLocaleString());
+
+        chartGroup.selectAll(".female-count")
+            .data(femaleNames)
+            .enter()
+            .append("text")
+            .attr("class", "count-label female-count")
+            .attr("x", d => centerX + 20 + xScale(d.count))
+            .attr("y", (d, i) => yScale(i) + yScale.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .text(d => d.count.toLocaleString());
+    }
+
+        // search bar functionality
+        const searchInput = document.getElementById('name-search');
+        const suggestionsDiv = document.getElementById('search-suggestions');
+
+        searchInput.addEventListener('input', function() {
+            const value = this.value.trim().toLowerCase();
+            if (!value) {
+            suggestionsDiv.style.display = 'none';
+            return;
+            }
+            const matches = allNames
+                .filter(d => d.name.toLowerCase().startsWith(value));
+
+            if (matches.length === 0) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+            suggestionsDiv.innerHTML = '';
+            matches.forEach(d => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = `${d.name} (${d.gender})`;
+                div.addEventListener('click', () => {
+                    selectName(d.name, d.gender);
+                    suggestionsDiv.style.display = 'none';
+                    searchInput.value = d.name;
+                });
+                suggestionsDiv.appendChild(div);
+            });
+            suggestionsDiv.style.display = 'block';
+        });
+
+        // hide suggestions on blur
+        searchInput.addEventListener('blur', function() {
+            setTimeout(() => { suggestionsDiv.style.display = 'none'; }, 150);
+        });
+
+        // handle Enter key
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+            const value = this.value.trim();
+            if (!value) return;
+            // Try to find the first matching name
+            const match = allNames.find(d => d.name.toLowerCase() === value.toLowerCase());
+            if (match) {
+                selectName(match.name, match.gender);
+                suggestionsDiv.style.display = 'none';
+            }
+            }
+        });
+
+        function updateLineChart() {
+            const svg = d3.select("#linechart");
+            const legendDiv = document.getElementById("linechart-legend");
+            const tooltip = d3.select("#linechart-tooltip");
+            svg.selectAll("*").remove(); 
+            legendDiv.innerHTML = ''; 
+
+            const margin = {top: 20, right: 20, bottom: 30, left: 50};
+            const width = svg.node().clientWidth;
+            const height = svg.node().clientHeight;
+            const chartW = width - margin.left - margin.right;
+            const chartH = Math.max(1, height - margin.top - margin.bottom);
+
+            const years = d3.range(1909, 2025);
+            const x = d3.scaleLinear().domain([1909, 2024]).range([0, chartW]);
+            const y = d3.scaleLinear().range([chartH, 0]);
+
+            // prepare data for each selected name
+            let allCounts = [];
+            const lineData = selectedLineNames.map(sel => {
+                let data;
+                if (pieCurrentState === "National") {
+                    data = years.map(year => {
+                        let total = 0;
+                        for (const state in stateNameYearGenderCount) {
+                            if (
+                                stateNameYearGenderCount[state][year] &&
+                                stateNameYearGenderCount[state][year][sel.gender] &&
+                                stateNameYearGenderCount[state][year][sel.gender][sel.name]
+                            ) {
+                                total += stateNameYearGenderCount[state][year][sel.gender][sel.name];
+                            }
+                        }
+                        allCounts.push(total);
+                        return { year, count: total };
+                    });
+                } else {
+                    data = years.map(year => {
+                    let count = 0;
+                    if (
+                        stateNameYearGenderCount[pieCurrentState] &&
+                        stateNameYearGenderCount[pieCurrentState][year] &&
+                        stateNameYearGenderCount[pieCurrentState][year][sel.gender] &&
+                        stateNameYearGenderCount[pieCurrentState][year][sel.gender][sel.name]
+                    ) {
+                        count = stateNameYearGenderCount[pieCurrentState][year][sel.gender][sel.name];
+                    }
+                    allCounts.push(count);
+                    return { year, count };
+                });
+                }
+                return { ...sel, data };
+            });
+
+            // set y domain
+            const maxY = Math.max(1, d3.max(allCounts)); 
+            y.domain([0, maxY]);
+
+            // draw axes
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            g.append("g")
+                .attr("transform", `translate(0,${chartH})`)
+                .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(10))
+                .selectAll("text")
+                .style("font-size", "10px");
+            g.append("g")
+                .call(d3.axisLeft(y).ticks(5))
+                .selectAll("text")
+                .style("font-size", "10px");
+
+            // get SVG position for tooltip positioning
+            const svgRect = svg.node().getBoundingClientRect();
+            // draw lines
+            const line = d3.line()
+                .x(d => x(d.year))
+                .y(d => y(d.count));
+
+            lineData.forEach((d, i) => {
+                // draw the line
+                const path = g.append("path")
+                    .datum(d.data)
+                    .attr("fill", "none")
+                    .attr("stroke", d.color)
+                    .attr("stroke-width", 2)
+                    .attr("class", "linechart-line")
+                    .attr("d", line);
+
+                // animate the line drawing
+                const totalLength = path.node().getTotalLength();
+                path
+                    .attr("stroke-dasharray", totalLength + " " + totalLength)
+                    .attr("stroke-dashoffset", totalLength)
+                    .transition()
+                    .duration(1200)
+                    .ease(d3.easeLinear)
+                    .attr("stroke-dashoffset", 0);
+
+                // add hover effect
+                path
+                    .on("mouseover", function() {
+                        d3.select(this)
+                            .attr("stroke-width", 4)
+                            .raise();
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this)
+                            .attr("stroke-width", 2);
+                        tooltip.style("display", "none");
+                    }).on("mousemove", function(event) {
+                        const [mx] = d3.pointer(event);
+                        const year = Math.round(x.invert(mx));
+                        const point = d.data.find(pt => pt.year === year);
+                        if (point) {
+                            tooltip
+                                .style("display", "block")
+                                .style("left", (event.pageX -svgRect.left + 10) + "px")
+                                .style("top", (event.pageY - svgRect.top - 20) + "px")
+                                .html(`<strong>${d.name} (${d.gender})</strong><br>${year}: ${point.count.toLocaleString()}`);
+                        }
+                    });
+            });
+
+            // draw legend
+            lineData.forEach((d, i) => {
+                const legendItem = document.createElement("div");
+                legendItem.style.display = "flex";
+                legendItem.style.alignItems = "center";
+                legendItem.style.gap = "0.5rem";
+                legendItem.innerHTML = `<span style="display:inline-block;width:18px;height:4px;background:${d.color};margin-right:6px;border-radius:2px;"></span>
+                    <span>${d.name} (${d.gender})</span>
+                    <span class="legend-x" style="color:#b00;cursor:pointer;font-weight:bold;margin-left:6px;">&#10005;</span>`;
+                legendItem.querySelector(".legend-x").onclick = () => {
+                    selectedLineNames = selectedLineNames.filter(sel => !(sel.name === d.name && sel.gender === d.gender));
+                    updateLineChart();
+                };
+                legendDiv.appendChild(legendItem);
+            });
+        }
+
+
+        // set selected name/gender and update map and line chart
+        function selectName(name, gender) {
+            selectedBarName = name;
+            selectedBarGender = gender;
+
+            const mapLabel = document.getElementById('map-picked-label');
+            if (name && gender) {
+                mapLabel.textContent = `Selected: ${name} (${gender})`;
+            } else {
+                mapLabel.textContent = '';
+            }
+
+            const key = name + "|" + gender;
+            selectedLineNames = selectedLineNames.filter(d => (d.name + "|" + d.gender) !== key);
+            selectedLineNames.push({ name, gender });
+            if (selectedLineNames.length > 2) selectedLineNames = selectedLineNames.slice(-2); // keep only last 2
+            selectedLineNames.forEach(d => {
+                d.color = d.gender === 'F' ? '#8d44add6' : '#4a90e2';
+            });
+            const infoDiv = document.getElementById('picked-name-info');
+            if (name && gender) {
+                infoDiv.innerHTML = `Name picked: ${name} (${gender}) <span id="picked-name-x" style="color:#b00;cursor:pointer;font-weight:bold;margin-left:8px;">&#10005;</span>`;
+                document.getElementById('picked-name-x').onclick = function() {
+                    selectedBarName = null;
+                    selectedBarGender = null;
+                    infoDiv.textContent = 'Pick a name:';
+                    document.getElementById('map-picked-label').textContent = '';
+                    updateMapColors();
+                    updateLineChart();
+                };
+            } else {
+                infoDiv.textContent = 'Pick a name:';
+            }
+
+            updateMapColors();
+            updateLineChart();
+        }
+
+    </script>
+</body>
+</html>
